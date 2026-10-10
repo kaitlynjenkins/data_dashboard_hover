@@ -537,5 +537,548 @@ const FLIGHT={"header":["flight","time","wind_speed","wind_angle","battery_volta
 
 })();
 </script>
+
+<style>
+.jf-sum{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;}
+.jf-sum::-webkit-details-marker{display:none;}
+.jf-sum .title{font-size:14px;font-weight:600;color:var(--text,#e7ecf3);}
+.jf-sum .title::before{content:"\25B8";display:inline-block;width:1.2em;color:var(--amber,#f2a53c);transition:transform .15s;}
+details[open]>.jf-sum .title::before{transform:rotate(90deg);}
+.jf-sum .sub{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--text-dimmer,#566072);}
+.jf-sum:focus-visible{outline:1px solid var(--amber,#f2a53c);outline-offset:4px;}
+.jf-body{margin-top:16px;}
+.jf-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px 16px;align-items:end;margin-bottom:16px;}
+.jf-f{display:flex;flex-direction:column;gap:5px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--text-dimmer,#566072);}
+.jf-f select,.jf-f input[type=number]{font:500 12px "IBM Plex Mono",monospace;color:var(--text,#e7ecf3);background:var(--bg-panel-alt,#1b2230);border:1px solid var(--border,#2a3341);border-radius:3px;padding:7px 8px;min-width:0;width:100%;}
+.jf-f select:focus-visible,.jf-f input:focus-visible,.jf-btn:focus-visible{outline:1px solid var(--amber,#f2a53c);outline-offset:1px;}
+.jf-pair{display:flex;align-items:center;gap:8px;}
+.jf-pair i{font-style:normal;color:var(--text-dimmer,#566072);}
+.jf-chk{display:flex;align-items:center;gap:8px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--text-dim,#7c8797);padding-bottom:8px;cursor:pointer;}
+.jf-stage{background:#0c1015;border:1px solid var(--border-soft,#232b37);padding:22px;display:flex;justify-content:center;overflow-x:auto;}
+.jf-paper{margin:0;background:#fff;color:#111;padding:22px 24px 16px;box-shadow:0 0 0 1px #2a3341;max-width:100%;box-sizing:border-box;}
+.jf-paper img{display:block;max-width:100%;height:auto;margin:0 auto;}
+.jf-cap{font-family:"Times New Roman",Times,serif;font-size:14px;line-height:1.4;text-align:center;margin-top:12px;color:#111;}
+.jf-cap [contenteditable]{outline:none;border-bottom:1px dotted #bbb;}
+.jf-cap [contenteditable]:focus{border-bottom-color:#c77a00;}
+.jf-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;align-items:center;}
+.jf-btn{font:500 12px "IBM Plex Mono",monospace;color:var(--text,#e7ecf3);background:var(--bg-panel-alt,#1b2230);border:1px solid var(--border,#2a3341);padding:9px 14px;border-radius:3px;cursor:pointer;}
+.jf-btn:hover{border-color:var(--text-dim,#7c8797);}
+.jf-btn.primary{border-color:var(--amber,#f2a53c);color:var(--amber,#f2a53c);}
+.jf-status{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--green,#6bcf8e);min-height:1.2em;}
+.jf-status.warn{color:var(--amber,#f2a53c);}
+.jf-meta{margin-top:14px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--text-dim,#7c8797);line-height:1.8;}
+.jf-checks{display:flex;flex-wrap:wrap;gap:2px 18px;margin-top:6px;}
+.jf-checks span::before{content:"\2713\00a0";color:var(--green,#6bcf8e);}
+.jf-checks span.warn::before{content:"!\00a0";color:var(--amber,#f2a53c);}
+.jf-note{margin-top:10px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--text-dimmer,#566072);}
+</style>
+
+<script>
+(function(){
+'use strict';
+if(typeof FLIGHT==='undefined'){console.warn('Journal figures: FLIGHT data not found on this page.');return;}
+
+/* ------------------------------------------------------------------
+   Constants taken from the AIAA figure guidelines
+   ------------------------------------------------------------------ */
+const COL_W=3.25, PAGE_W=7, MAX_COL_H=3.5;   // inches
+const DPI=600;                                // line art
+const MAX_CAPTION_WORDS=25;
+const FONT='Arial, Helvetica, sans-serif';
+const FS={tick:8,label:9,leg:8,panel:9};      // pt, all >= 8 pt at final size
+const LW={axis:0.6,data:1.1,grid:0.35,tick:0.6}; // pt, all >= 0.28 pt
+const MINUS='\u2212';
+
+/* ------------------------------------------------------------------
+   Text helpers
+   ------------------------------------------------------------------ */
+let _ctx=null;
+function textW(str,size){
+  const plain=String(str).replace(/<\/?(i|sub|sup)>/g,'');
+  try{
+    if(!_ctx)_ctx=document.createElement('canvas').getContext('2d');
+    _ctx.font=size+'px '+FONT;
+    const w=_ctx.measureText(plain).width;
+    if(w>0)return w;
+  }catch(e){}
+  return plain.length*size*0.54;
+}
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* <i>, <sub>, <sup> mini-markup -> tspans */
+function rich(str,size){
+  const parts=String(str).split(/(<\/?(?:i|sub|sup)>)/);
+  let out='',it=false,mode='',shift=0;
+  for(const p of parts){
+    if(p==='<i>')it=true;
+    else if(p==='</i>')it=false;
+    else if(p==='<sub>')mode='sub';
+    else if(p==='<sup>')mode='sup';
+    else if(p==='</sub>'||p==='</sup>')mode='';
+    else if(p){
+      const want=mode==='sub'?size*0.2:mode==='sup'?-size*0.35:0;
+      let a='';
+      if(it)a+=' font-style="italic"';
+      if(mode)a+=' font-size="'+(size*0.72).toFixed(2)+'"';
+      if(want!==shift){a+=' dy="'+(want-shift).toFixed(2)+'"';shift=want;}
+      out+='<tspan'+a+'>'+esc(p)+'</tspan>';
+    }
+  }
+  return out;
+}
+const f2=v=>(Math.round(v*100)/100).toString();
+
+/* ------------------------------------------------------------------
+   Axis helpers
+   ------------------------------------------------------------------ */
+function niceStep(raw){
+  if(!(raw>0))return 1;
+  const e=Math.floor(Math.log10(raw)),f=raw/Math.pow(10,e);
+  return (f<1.5?1:f<3?2:f<7?5:10)*Math.pow(10,e);
+}
+function axisTicks(lo,hi,target){
+  const step=niceStep((hi-lo)/Math.max(2,target));
+  const dec=Math.max(0,-Math.floor(Math.log10(step)+1e-9));
+  const k0=Math.ceil(lo/step-1e-9),k1=Math.floor(hi/step+1e-9),ticks=[];
+  for(let k=k0;k<=k1;k++)ticks.push(+(k*step).toFixed(dec+2));
+  return {ticks,dec,step};
+}
+function fmtTick(v,dec){
+  const s=Math.abs(v)<Math.pow(10,-dec-1)?(0).toFixed(dec):v.toFixed(dec);
+  return s.replace('-',MINUS);
+}
+function dataRange(series,axis){
+  let lo=Infinity,hi=-Infinity;
+  for(const s of series)for(const v of s[axis]){
+    if(v==null||!isFinite(v))continue;
+    if(v<lo)lo=v;if(v>hi)hi=v;
+  }
+  return [lo,hi];
+}
+function padRange(r,frac){
+  let [lo,hi]=r;
+  if(!(hi>lo)){lo-=1;hi+=1;}
+  const p=(hi-lo)*frac;
+  return [lo-p,hi+p];
+}
+
+/* ------------------------------------------------------------------
+   SVG figure renderer (units: pt, 1 in = 72 pt)
+   ------------------------------------------------------------------ */
+function marker(type,x,y,c){
+  if(type==='circle')return '<circle cx="'+f2(x)+'" cy="'+f2(y)+'" r="2.8" fill="#fff" stroke="'+c+'" stroke-width="1.1"/>';
+  if(type==='diamond'){
+    const r=3.5;
+    return '<polygon points="'+[x,y-r,x+r,y,x,y+r,x-r,y].map(f2).join(',')+'" fill="'+c+'" stroke="'+c+'" stroke-width="0.5"/>';
+  }
+  return '';
+}
+function dashAttr(s){return s.dash?' stroke-dasharray="'+s.dash+'"':'';}
+
+function renderSVG(spec,wIn,hIn,opts){
+  opts=opts||{};
+  const W=wIn*72,H=hIn*72;
+  const P=spec.panels,nP=P.length;
+  const xlabel=spec.xlabel||'Time, s';
+  const hasLegend=P.some(p=>p.legend&&p.series.some(s=>s.label));
+  const hdr=(nP>1||hasLegend)?12:0;
+  const top=3,gap=3,bot=24,mr=8;
+  const ph=(H-top-nP*hdr-(nP-1)*gap-bot)/nP;
+  const yTarget=Math.max(3,Math.floor(ph/22));
+
+  /* provisional y ranges -> left margin from widest tick label */
+  const yr=P.map(p=>padRange(dataRange(p.series,'y'),0.05));
+  let maxLab=0;
+  yr.forEach(r=>{
+    const t=axisTicks(r[0],r[1],yTarget);
+    t.ticks.forEach(v=>{maxLab=Math.max(maxLab,textW(fmtTick(v,t.dec),FS.tick));});
+  });
+  const ml=Math.ceil(10+3+maxLab+5);
+  const pw=W-ml-mr;
+  const allSeries=[].concat(...P.map(p=>p.series));
+
+  /* x range */
+  let xr=spec.xlim?spec.xlim.slice():dataRange(allSeries,'x');
+  if(spec.equal){
+    const p=P[0];
+    let [xlo,xhi]=padRange(dataRange(p.series,'x'),0.08);
+    let [ylo,yhi]=padRange(dataRange(p.series,'y'),0.08);
+    const sc=Math.max((xhi-xlo)/pw,(yhi-ylo)/ph);
+    const xc=(xlo+xhi)/2,yc=(ylo+yhi)/2;
+    xr=[xc-sc*pw/2,xc+sc*pw/2];
+    yr[0]=[yc-sc*ph/2,yc+sc*ph/2];
+  }
+  const xt=axisTicks(xr[0],xr[1],Math.floor(pw/(spec.equal?40:(pw>300?44:28))));
+  const X=v=>ml+(v-xr[0])/(xr[1]-xr[0])*pw;
+
+  let g='';
+  let defs='';
+  P.forEach((p,i)=>{
+    const py=top+i*(hdr+ph+gap)+hdr;
+    const pb=py+ph;
+    const r=yr[i];
+    const yt=axisTicks(r[0],r[1],yTarget);
+    const Y=v=>py+ph-(v-r[0])/(r[1]-r[0])*ph;
+    const cid='c'+i;
+    defs+='<clipPath id="'+cid+'"><rect x="'+f2(ml)+'" y="'+f2(py)+'" width="'+f2(pw)+'" height="'+f2(ph)+'"/></clipPath>';
+
+    /* grid */
+    if(opts.grid){
+      xt.ticks.forEach(v=>{const x=X(v);g+='<line x1="'+f2(x)+'" x2="'+f2(x)+'" y1="'+f2(py)+'" y2="'+f2(pb)+'" stroke="#c4c4c4" stroke-width="'+LW.grid+'"/>';});
+      yt.ticks.forEach(v=>{const y=Y(v);g+='<line x1="'+f2(ml)+'" x2="'+f2(ml+pw)+'" y1="'+f2(y)+'" y2="'+f2(y)+'" stroke="#c4c4c4" stroke-width="'+LW.grid+'"/>';});
+    }
+    /* data */
+    g+='<g clip-path="url(#'+cid+')">';
+    p.series.forEach(s=>{
+      if(s.line!==false){
+        let d='',pen=false;
+        for(let k=0;k<s.x.length;k++){
+          const xv=s.x[k],yv=s.y[k];
+          if(xv==null||yv==null||!isFinite(xv)||!isFinite(yv)){pen=false;continue;}
+          d+=(pen?'L':'M')+f2(X(xv))+','+f2(Y(yv));pen=true;
+        }
+        g+='<path d="'+d+'" fill="none" stroke="'+s.c+'" stroke-width="'+(s.w||LW.data)+'" stroke-linejoin="round"'+dashAttr(s)+'/>';
+      }
+      if(s.marker){
+        for(let k=0;k<s.x.length;k++)g+=marker(s.marker,X(s.x[k]),Y(s.y[k]),s.c);
+      }
+    });
+    g+='</g>';
+    /* frame + inward ticks */
+    g+='<rect x="'+f2(ml)+'" y="'+f2(py)+'" width="'+f2(pw)+'" height="'+f2(ph)+'" fill="none" stroke="#000" stroke-width="'+LW.axis+'"/>';
+    xt.ticks.forEach(v=>{
+      const x=f2(X(v));
+      g+='<path d="M'+x+','+f2(pb)+'v-3M'+x+','+f2(py)+'v3" stroke="#000" stroke-width="'+LW.tick+'"/>';
+    });
+    yt.ticks.forEach(v=>{
+      const y=f2(Y(v));
+      g+='<path d="M'+f2(ml)+','+y+'h3M'+f2(ml+pw)+','+y+'h-3" stroke="#000" stroke-width="'+LW.tick+'"/>';
+      g+='<text x="'+f2(ml-4)+'" y="'+f2(Y(v)+FS.tick*0.36)+'" font-size="'+FS.tick+'" text-anchor="end" fill="#000">'+fmtTick(v,yt.dec)+'</text>';
+    });
+    /* y label (auto-shrinks, never below 8 pt) */
+    let fl=FS.label;
+    const lw=textW(p.ylabel,fl);
+    if(lw>ph-4)fl=Math.max(8,fl*(ph-4)/lw);
+    g+='<text transform="translate('+f2(FS.label*0.82)+','+f2(py+ph/2)+') rotate(-90)" font-size="'+f2(fl)+'" text-anchor="middle" fill="#000">'+rich(p.ylabel,fl)+'</text>';
+
+    /* header row: panel letter (left) + legend (right) */
+    if(hdr){
+      const by=py-3.5;
+      if(nP>1)g+='<text x="'+f2(ml)+'" y="'+f2(by)+'" font-size="'+FS.panel+'" font-weight="bold" fill="#000">'+String.fromCharCode(97+i)+')</text>';
+      const items=p.legend?p.series.filter(s=>s.label):[];
+      if(items.length){
+        let tot=0;
+        items.forEach((s,k)=>{tot+=15+3+textW(s.label,FS.leg)+(k?10:0);});
+        let x=ml+pw-tot;
+        items.forEach(s=>{
+          const cy=by-2.8;
+          if(s.line!==false)g+='<line x1="'+f2(x)+'" x2="'+f2(x+15)+'" y1="'+f2(cy)+'" y2="'+f2(cy)+'" stroke="'+s.c+'" stroke-width="'+(s.w||LW.data)+'"'+dashAttr(s)+'/>';
+          if(s.marker)g+=marker(s.marker,x+7.5,cy,s.c);
+          g+='<text x="'+f2(x+18)+'" y="'+f2(by)+'" font-size="'+FS.leg+'" fill="#000">'+rich(s.label,FS.leg)+'</text>';
+          x+=15+3+textW(s.label,FS.leg)+10;
+        });
+      }
+    }
+    /* x tick labels and x label on the bottom panel only */
+    if(i===nP-1){
+      xt.ticks.forEach(v=>{
+        g+='<text x="'+f2(X(v))+'" y="'+f2(pb+9.5)+'" font-size="'+FS.tick+'" text-anchor="middle" fill="#000">'+fmtTick(v,xt.dec)+'</text>';
+      });
+      g+='<text x="'+f2(ml+pw/2)+'" y="'+f2(pb+21)+'" font-size="'+FS.label+'" text-anchor="middle" fill="#000">'+rich(spec.xlabelRich||xlabel,FS.label)+'</text>';
+    }
+  });
+
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="'+f2(W)+'pt" height="'+f2(H)+'pt" viewBox="0 0 '+f2(W)+' '+f2(H)+'" font-family="'+FONT+'">'
+    +'<defs>'+defs+'</defs><rect width="100%" height="100%" fill="#fff"/>'+g+'</svg>';
+}
+
+/* ------------------------------------------------------------------
+   Data + figure definitions
+   ------------------------------------------------------------------ */
+const F=FLIGHT,C=F.columns,N=C.time.length;
+const flightName='Flight '+Math.round(C.flight[0]);
+
+function prep(t0,t1){
+  const idx=[];
+  for(let i=0;i<N;i++){
+    if(C.position_z[i]==null)continue;
+    const t=C.time[i];
+    if(t<t0-1e-9||t>t1+1e-9)continue;
+    idx.push(i);
+  }
+  return {idx,t:idx.map(i=>C.time[i]),g:k=>idx.map(i=>C[k][i])};
+}
+function quatToRPY(x,y,z,w){
+  if(x==null||y==null||z==null||w==null)return [null,null,null];
+  const m=Math.sqrt(x*x+y*y+z*z+w*w)||1;x/=m;y/=m;z/=m;w/=m;
+  const D=180/Math.PI;
+  return [
+    Math.atan2(2*(w*x+y*z),1-2*(x*x+y*y))*D,
+    Math.asin(Math.max(-1,Math.min(1,2*(w*y-z*x))))*D,
+    Math.atan2(2*(w*z+x*y),1-2*(y*y+z*z))*D
+  ];
+}
+const num=(v,d)=>(+v).toFixed(d===undefined?2:d).replace(/\.?0+$/,'');
+
+const FIGS=[
+ {id:'altitude',name:'Altitude response',h:[2.4,2.7],
+  build(D,S){
+    const t=D.t,z=D.g('position_z'),sp=C.altitude[0];
+    const zAll=C.position_z.filter(v=>v!=null);
+    const os=(Math.max(...zAll)-sp)/sp*100;
+    return {panels:[{ylabel:'Altitude, m',legend:true,series:[
+      {x:t,y:z,label:'Measured',...S.a},
+      {x:[t[0],t[t.length-1]],y:[sp,sp],label:'Setpoint',...S.b}]}],
+      caption:'Altitude response during the '+num(sp)+' m hover command; peak overshoot is '+os.toFixed(1)+'%.'};
+  }},
+ {id:'groundtrack',name:'Ground track (equal axes)',h:[3.25,3.25],single:true,
+  build(D,S){
+    const x=D.g('position_x').map(v=>v*1000),y=D.g('position_y').map(v=>v*1000);
+    let ex=0;
+    for(let i=0;i<x.length;i++)ex=Math.max(ex,Math.hypot(x[i]-x[0],y[i]-y[0]));
+    const L=x.length-1;
+    return {xlabelRich:'<i>x</i>, mm',equal:true,panels:[{ylabel:'<i>y</i>, mm',legend:true,series:[
+      {x,y,label:'Path',...S.a},
+      {x:[x[0]],y:[y[0]],label:'Start',line:false,marker:'circle',c:S.a.c},
+      {x:[x[L]],y:[y[L]],label:'End',line:false,marker:'diamond',c:S.b.c}]}],
+      caption:'Horizontal ground track; maximum excursion from the start point is '+ex.toFixed(0)+' mm.'};
+  }},
+ {id:'velocity',name:'Velocity components (2 parts)',h:[3.4,3.1],
+  build(D,S){
+    const t=D.t;
+    return {panels:[
+      {ylabel:'Velocity, m/s',legend:true,series:[{x:t,y:D.g('velocity_z'),label:'<i>v</i><sub>z</sub>',...S.a}]},
+      {ylabel:'Velocity, m/s',legend:true,series:[
+        {x:t,y:D.g('velocity_x'),label:'<i>v</i><sub>x</sub>',...S.a},
+        {x:t,y:D.g('velocity_y'),label:'<i>v</i><sub>y</sub>',...S.b}]}],
+      caption:'Velocity components during '+flightName+': a) vertical and b) horizontal.'};
+  }},
+ {id:'attitude',name:'Attitude angles',h:[2.4,2.7],
+  build(D,S){
+    const q=D.idx.map(i=>quatToRPY(C.orientation_x[i],C.orientation_y[i],C.orientation_z[i],C.orientation_w[i]));
+    const t=D.t;
+    return {panels:[{ylabel:'Angle, deg',legend:true,series:[
+      {x:t,y:q.map(r=>r[0]),label:'Roll',...S.a},
+      {x:t,y:q.map(r=>r[1]),label:'Pitch',...S.b},
+      {x:t,y:q.map(r=>r[2]),label:'Yaw',...S.c}]}],
+      caption:'Roll, pitch, and yaw angles derived from the orientation quaternion.'};
+  }},
+ {id:'angular',name:'Angular rates',h:[2.4,2.7],
+  build(D,S){
+    const t=D.t;
+    return {panels:[{ylabel:'Angular rate, rad/s',legend:true,series:[
+      {x:t,y:D.g('angular_x'),label:'<i>\u03C9</i><sub>x</sub>',...S.a},
+      {x:t,y:D.g('angular_y'),label:'<i>\u03C9</i><sub>y</sub>',...S.b},
+      {x:t,y:D.g('angular_z'),label:'<i>\u03C9</i><sub>z</sub>',...S.c}]}],
+      caption:'Angular rates about the x, y, and z axes during '+flightName+'.'};
+  }},
+ {id:'acceleration',name:'Linear acceleration (2 parts)',h:[3.4,3.1],
+  build(D,S){
+    const t=D.t;
+    return {panels:[
+      {ylabel:'Acceleration, m/s\u00B2',legend:true,series:[
+        {x:t,y:D.g('linear_acceleration_x'),label:'<i>a</i><sub>x</sub>',...S.a},
+        {x:t,y:D.g('linear_acceleration_y'),label:'<i>a</i><sub>y</sub>',...S.b}]},
+      {ylabel:'Acceleration, m/s\u00B2',legend:true,series:[
+        {x:t,y:D.g('linear_acceleration_z'),label:'<i>a</i><sub>z</sub>',...S.a}]}],
+      caption:'Linear acceleration components: a) horizontal and b) vertical, including gravity.'};
+  }},
+ {id:'battery',name:'Battery voltage',h:[2.4,2.7],
+  build(D,S){
+    const t=D.t,v=D.g('battery_voltage');
+    let mi=0;for(let i=1;i<v.length;i++)if(v[i]<v[mi])mi=i;
+    return {panels:[{ylabel:'Battery voltage, V',series:[{x:t,y:v,...S.a}]}],
+      caption:'Battery voltage during '+flightName+'; the minimum is '+v[mi].toFixed(2)+' V at t = '+num(t[mi],1)+' s.'};
+  }},
+ {id:'summary',name:'Flight summary (3 parts)',h:[3.4,3.5],
+  build(D,S){
+    const t=D.t;
+    return {panels:[
+      {ylabel:'Altitude, m',series:[{x:t,y:D.g('position_z'),...S.a}]},
+      {ylabel:'Speed, m/s',series:[{x:t,y:D.g('speed'),...S.a}]},
+      {ylabel:'Voltage, V',series:[{x:t,y:D.g('battery_voltage'),...S.a}]}],
+      caption:flightName+' summary: a) altitude, b) speed, and c) battery voltage.'};
+  }}
+];
+
+function styles(color){
+  return color
+    ?{a:{c:'#000000',dash:null},b:{c:'#c1272d',dash:'4 2'},c:{c:'#1b4f9c',dash:'5 1.5 1 1.5'}}
+    :{a:{c:'#000000',dash:null},b:{c:'#000000',dash:'4 2'},c:{c:'#000000',dash:'5 1.5 1 1.5'}};
+}
+
+/* ------------------------------------------------------------------
+   PNG export with 600 dpi metadata (pHYs chunk)
+   ------------------------------------------------------------------ */
+let _crcT=null;
+function crc32(b){
+  if(!_crcT){_crcT=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;_crcT[n]=c>>>0;}}
+  let crc=0xFFFFFFFF;
+  for(let i=0;i<b.length;i++)crc=_crcT[(crc^b[i])&0xFF]^(crc>>>8);
+  return (crc^0xFFFFFFFF)>>>0;
+}
+async function addDpi(blob,dpi){
+  const buf=new Uint8Array(await blob.arrayBuffer());
+  const ppm=Math.round(dpi/0.0254);
+  const ch=new Uint8Array(21),dv=new DataView(ch.buffer);
+  dv.setUint32(0,9);ch.set([0x70,0x48,0x59,0x73],4);
+  dv.setUint32(8,ppm);dv.setUint32(12,ppm);ch[16]=1;
+  dv.setUint32(17,crc32(ch.subarray(4,17)));
+  const out=new Uint8Array(buf.length+21);
+  out.set(buf.subarray(0,33),0);out.set(ch,33);out.set(buf.subarray(33),54);
+  return new Blob([out],{type:'image/png'});
+}
+function svgToPng(svg,wIn,hIn){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(wIn*DPI);cv.height=Math.round(hIn*DPI);
+      const x=cv.getContext('2d');
+      x.fillStyle='#fff';x.fillRect(0,0,cv.width,cv.height);
+      x.drawImage(img,0,0,cv.width,cv.height);
+      cv.toBlob(b=>b?addDpi(b,DPI).then(resolve,reject):reject(new Error('PNG encode failed')),'image/png');
+    };
+    img.onerror=()=>reject(new Error('SVG render failed'));
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  });
+}
+
+/* expose the pure part for testing */
+if(typeof document==='undefined'||!document.body){
+  (typeof globalThis!=='undefined'?globalThis:this).__JF={FIGS,styles,renderSVG,prep,COL_W,PAGE_W};
+  return;
+}
+
+/* ------------------------------------------------------------------
+   UI
+   ------------------------------------------------------------------ */
+const host=document.querySelector('.shell')||document.body;
+const wrap=document.createElement('div');
+wrap.innerHTML=
+'<div class="section-label">publication figures</div>'+
+'<div class="panel">'+
+ '<div class="tick-bl"></div><div class="tick-br"></div>'+
+ '<details id="jf">'+
+  '<summary class="jf-sum"><span class="title">Journal figures</span><span class="sub">AIAA format \u00B7 copy as PNG or download</span></summary>'+
+  '<div class="jf-body">'+
+   '<div class="jf-controls">'+
+    '<label class="jf-f"><span>figure</span><select id="jfSel"></select></label>'+
+    '<label class="jf-f"><span>width</span><select id="jfWidth"><option value="col">Single column \u00B7 3.25 in</option><option value="page">Page width \u00B7 7 in</option></select></label>'+
+    '<label class="jf-f"><span>colour</span><select id="jfColor"><option value="color">Colour + line styles</option><option value="bw">Black &amp; white</option></select></label>'+
+    '<label class="jf-f"><span>time window, s</span><div class="jf-pair"><input id="jfT0" type="number" step="0.1" aria-label="Window start, seconds"><i>to</i><input id="jfT1" type="number" step="0.1" aria-label="Window end, seconds"></div></label>'+
+    '<label class="jf-f"><span>figure number</span><input id="jfNum" type="number" min="1" step="1" value="1"></label>'+
+    '<label class="jf-chk"><input id="jfGrid" type="checkbox" checked>grid lines</label>'+
+   '</div>'+
+   '<div class="jf-stage"><figure class="jf-paper" id="jfPaper">'+
+     '<img id="jfImg" alt="Journal figure preview">'+
+     '<figcaption class="jf-cap"><b id="jfNo">Fig. 1</b>&nbsp;&nbsp;<span id="jfCap" contenteditable="true" spellcheck="false"></span></figcaption>'+
+   '</figure></div>'+
+   '<div class="jf-actions">'+
+    '<button class="jf-btn primary" id="jfCopy" type="button">Copy figure</button>'+
+    '<button class="jf-btn" id="jfCopyCap" type="button">Copy caption</button>'+
+    '<button class="jf-btn" id="jfPng" type="button">Download PNG \u00B7 600 dpi</button>'+
+    '<button class="jf-btn" id="jfSvg" type="button">Download SVG</button>'+
+    '<span class="jf-status" id="jfStatus" role="status"></span>'+
+   '</div>'+
+   '<div class="jf-meta"><div id="jfSpec"></div><div class="jf-checks" id="jfChecks"></div></div>'+
+   '<div class="jf-note">Preview is enlarged. Figures are drawn with a white background and no caption inside the image; paste the caption into your manuscript beneath the figure. The caption text is editable.</div>'+
+  '</div>'+
+ '</details>'+
+'</div>';
+while(wrap.firstChild)host.appendChild(wrap.firstChild);
+
+const $=id=>document.getElementById(id);
+const sel=$('jfSel'),widthSel=$('jfWidth'),colorSel=$('jfColor'),gridChk=$('jfGrid');
+const t0In=$('jfT0'),t1In=$('jfT1'),numIn=$('jfNum');
+const img=$('jfImg'),noEl=$('jfNo'),capEl=$('jfCap'),statusEl=$('jfStatus');
+FIGS.forEach((f,i)=>{const o=document.createElement('option');o.value=i;o.textContent=f.name;sel.appendChild(o);});
+
+const tFirst=C.time[0],tLast=C.time[N-1];
+t0In.value=tFirst;t1In.value=tLast;t0In.min=t1In.min=tFirst;t0In.max=t1In.max=tLast;
+
+let cur=null,statusTimer=null;
+function say(msg,warn){
+  statusEl.textContent=msg;statusEl.className='jf-status'+(warn?' warn':'');
+  clearTimeout(statusTimer);statusTimer=setTimeout(()=>{statusEl.textContent='';},5000);
+}
+const words=s=>(s.trim().match(/\S+/g)||[]).length;
+
+function refreshMeta(){
+  if(!cur)return;
+  const wc=words(capEl.textContent);
+  const fits=cur.wIn<=COL_W?(cur.hIn<=MAX_COL_H):true;
+  $('jfSpec').textContent=cur.wIn.toFixed(2)+' \u00D7 '+cur.hIn.toFixed(2)+' in  \u00B7  '+Math.round(cur.wIn*DPI)+' \u00D7 '+Math.round(cur.hIn*DPI)+' px at '+DPI+' dpi';
+  const items=[
+    ['Lettering 8\u20139 pt at final size',false],
+    ['Lines \u2265 0.35 pt',false],
+    ['SI units',false],
+    ['No caption inside figure',false],
+    [cur.wIn<=COL_W?(fits?'Fits one column (\u2264 3\u00BC \u00D7 3\u00BD in)':'Taller than 3\u00BD in: adds to page count'):'Page-width figure: adds to page count',cur.wIn>COL_W||!fits],
+    ['Caption '+wc+' / '+MAX_CAPTION_WORDS+' words',wc>MAX_CAPTION_WORDS]
+  ];
+  $('jfChecks').innerHTML=items.map(i=>'<span'+(i[1]?' class="warn"':'')+'>'+esc(i[0])+'</span>').join('');
+  noEl.textContent='Fig. '+(numIn.value||1);
+}
+
+function update(resetCaption){
+  const fig=FIGS[+sel.value];
+  let wIn=widthSel.value==='page'?PAGE_W:COL_W;
+  if(fig.single&&wIn>COL_W){wIn=COL_W;say('Equal-axis plot is limited to one column.',true);}
+  const hIn=wIn>COL_W?fig.h[1]:fig.h[0];
+  let a=parseFloat(t0In.value),b=parseFloat(t1In.value);
+  if(!isFinite(a))a=tFirst;if(!isFinite(b))b=tLast;
+  const D=prep(a,b);
+  if(D.t.length<3){say('Time window is too short.',true);return;}
+  const S=styles(colorSel.value==='color');
+  const spec=fig.build(D,S);
+  if(!spec.equal)spec.xlim=[a,b];
+  const svg=renderSVG(spec,wIn,hIn,{grid:gridChk.checked});
+  cur={fig,svg,wIn,hIn,caption:spec.caption};
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  img.style.width=Math.round(wIn*96*1.55)+'px';
+  if(resetCaption)capEl.textContent=spec.caption;
+  refreshMeta();
+}
+
+function fname(ext){return 'flight'+Math.round(C.flight[0])+'_fig'+(numIn.value||1)+'_'+cur.fig.id+'.'+ext;}
+function download(blob,name){
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+
+sel.addEventListener('change',()=>{numIn.value=+sel.value+1;update(true);});
+[widthSel,colorSel,gridChk].forEach(el=>el.addEventListener('change',()=>update(true)));
+let tmr=null;
+[t0In,t1In].forEach(el=>el.addEventListener('input',()=>{clearTimeout(tmr);tmr=setTimeout(()=>update(true),250);}));
+numIn.addEventListener('input',refreshMeta);
+capEl.addEventListener('input',refreshMeta);
+capEl.addEventListener('keydown',e=>{if(e.key==='Enter')e.preventDefault();});
+
+$('jfSvg').addEventListener('click',()=>{if(cur)download(new Blob([cur.svg],{type:'image/svg+xml'}),fname('svg'));});
+$('jfPng').addEventListener('click',()=>{
+  if(!cur)return;
+  svgToPng(cur.svg,cur.wIn,cur.hIn).then(b=>{download(b,fname('png'));say('PNG saved (600 dpi)');}).catch(e=>say(e.message,true));
+});
+$('jfCopy').addEventListener('click',()=>{
+  if(!cur)return;
+  if(!(navigator.clipboard&&window.ClipboardItem)){say('Clipboard blocked here. Use Download PNG, or right-click the preview and choose Copy image.',true);return;}
+  const p=svgToPng(cur.svg,cur.wIn,cur.hIn);
+  navigator.clipboard.write([new ClipboardItem({'image/png':p})])
+    .then(()=>say('Figure copied (PNG, 600 dpi)'))
+    .catch(()=>say('Clipboard blocked here. Use Download PNG, or right-click the preview and choose Copy image.',true));
+});
+$('jfCopyCap').addEventListener('click',()=>{
+  const txt=noEl.textContent+'  '+capEl.textContent.trim();
+  const ok=()=>say('Caption copied');
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(ok).catch(()=>say('Clipboard blocked here. Select the caption and copy it.',true));
+  else say('Clipboard blocked here. Select the caption and copy it.',true);
+});
+
+/* render lazily the first time the dropdown is opened */
+const det=$('jf');
+let first=true;
+det.addEventListener('toggle',()=>{if(det.open&&first){first=false;update(true);}});
+})();
+</script>
 </body>
 </html>
