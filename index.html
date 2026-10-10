@@ -547,30 +547,26 @@ details[open]>.jf-sum .title::before{transform:rotate(90deg);}
 .jf-sum .sub{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--text-dimmer,#566072);}
 .jf-sum:focus-visible{outline:1px solid var(--amber,#f2a53c);outline-offset:4px;}
 .jf-body{margin-top:16px;}
-.jf-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px 16px;align-items:end;margin-bottom:16px;}
-.jf-f{display:flex;flex-direction:column;gap:5px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--text-dimmer,#566072);}
-.jf-f select,.jf-f input[type=number]{font:500 12px "IBM Plex Mono",monospace;color:var(--text,#e7ecf3);background:var(--bg-panel-alt,#1b2230);border:1px solid var(--border,#2a3341);border-radius:3px;padding:7px 8px;min-width:0;width:100%;}
-.jf-f select:focus-visible,.jf-f input:focus-visible,.jf-btn:focus-visible{outline:1px solid var(--amber,#f2a53c);outline-offset:1px;}
-.jf-pair{display:flex;align-items:center;gap:8px;}
-.jf-pair i{font-style:normal;color:var(--text-dimmer,#566072);}
+.jf-controls{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;margin-bottom:18px;}
+.jf-f{display:flex;flex-direction:column;gap:5px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--text-dimmer,#566072);min-width:200px;}
+.jf-f select{font:500 12px "IBM Plex Mono",monospace;color:var(--text,#e7ecf3);background:var(--bg-panel-alt,#1b2230);border:1px solid var(--border,#2a3341);border-radius:3px;padding:7px 8px;width:100%;}
+.jf-f select:focus-visible,.jf-btn:focus-visible{outline:1px solid var(--amber,#f2a53c);outline-offset:1px;}
 .jf-chk{display:flex;align-items:center;gap:8px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--text-dim,#7c8797);padding-bottom:8px;cursor:pointer;}
-.jf-stage{background:#0c1015;border:1px solid var(--border-soft,#232b37);padding:22px;display:flex;justify-content:center;overflow-x:auto;}
-.jf-paper{margin:0;background:#fff;color:#111;padding:22px 24px 16px;box-shadow:0 0 0 1px #2a3341;max-width:100%;box-sizing:border-box;}
+.jf-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,560px),1fr));gap:18px;}
+.jf-card{min-width:0;}
+.jf-card.wide{grid-column:1/-1;}
+.jf-stage{background:#0c1015;border:1px solid var(--border-soft,#232b37);padding:16px;display:flex;justify-content:center;overflow-x:auto;}
+.jf-paper{margin:0;background:#fff;color:#111;padding:20px 22px 14px;box-shadow:0 0 0 1px #2a3341;max-width:100%;box-sizing:border-box;}
 .jf-paper img{display:block;max-width:100%;height:auto;margin:0 auto;}
 .jf-cap{font-family:"Times New Roman",Times,serif;font-size:14px;line-height:1.4;text-align:center;margin-top:12px;color:#111;}
 .jf-cap [contenteditable]{outline:none;border-bottom:1px dotted #bbb;}
 .jf-cap [contenteditable]:focus{border-bottom-color:#c77a00;}
-.jf-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;align-items:center;}
-.jf-btn{font:500 12px "IBM Plex Mono",monospace;color:var(--text,#e7ecf3);background:var(--bg-panel-alt,#1b2230);border:1px solid var(--border,#2a3341);padding:9px 14px;border-radius:3px;cursor:pointer;}
+.jf-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;}
+.jf-btn{font:500 11.5px "IBM Plex Mono",monospace;color:var(--text,#e7ecf3);background:var(--bg-panel-alt,#1b2230);border:1px solid var(--border,#2a3341);padding:8px 12px;border-radius:3px;cursor:pointer;}
 .jf-btn:hover{border-color:var(--text-dim,#7c8797);}
 .jf-btn.primary{border-color:var(--amber,#f2a53c);color:var(--amber,#f2a53c);}
-.jf-status{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--green,#6bcf8e);min-height:1.2em;}
+.jf-status{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--green,#6bcf8e);}
 .jf-status.warn{color:var(--amber,#f2a53c);}
-.jf-meta{margin-top:14px;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--text-dim,#7c8797);line-height:1.8;}
-.jf-checks{display:flex;flex-wrap:wrap;gap:2px 18px;margin-top:6px;}
-.jf-checks span::before{content:"\2713\00a0";color:var(--green,#6bcf8e);}
-.jf-checks span.warn::before{content:"!\00a0";color:var(--amber,#f2a53c);}
-.jf-note{margin-top:10px;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--text-dimmer,#566072);}
 </style>
 
 <script>
@@ -950,7 +946,7 @@ if(typeof document==='undefined'||!document.body){
 }
 
 /* ------------------------------------------------------------------
-   UI
+   UI: every figure is shown at once
    ------------------------------------------------------------------ */
 const host=document.querySelector('.shell')||document.body;
 const wrap=document.createElement('div');
@@ -962,122 +958,84 @@ wrap.innerHTML=
   '<summary class="jf-sum"><span class="title">Journal figures</span><span class="sub">AIAA format \u00B7 copy as PNG or download</span></summary>'+
   '<div class="jf-body">'+
    '<div class="jf-controls">'+
-    '<label class="jf-f"><span>figure</span><select id="jfSel"></select></label>'+
     '<label class="jf-f"><span>width</span><select id="jfWidth"><option value="col">Single column \u00B7 3.25 in</option><option value="page">Page width \u00B7 7 in</option></select></label>'+
     '<label class="jf-f"><span>colour</span><select id="jfColor"><option value="color">Colour + line styles</option><option value="bw">Black &amp; white</option></select></label>'+
-    '<label class="jf-f"><span>time window, s</span><div class="jf-pair"><input id="jfT0" type="number" step="0.1" aria-label="Window start, seconds"><i>to</i><input id="jfT1" type="number" step="0.1" aria-label="Window end, seconds"></div></label>'+
-    '<label class="jf-f"><span>figure number</span><input id="jfNum" type="number" min="1" step="1" value="1"></label>'+
-    '<label class="jf-chk"><input id="jfGrid" type="checkbox" checked>grid lines</label>'+
+    '<label class="jf-chk"><input id="jfGridChk" type="checkbox" checked>grid lines</label>'+
    '</div>'+
-   '<div class="jf-stage"><figure class="jf-paper" id="jfPaper">'+
-     '<img id="jfImg" alt="Journal figure preview">'+
-     '<figcaption class="jf-cap"><b id="jfNo">Fig. 1</b>&nbsp;&nbsp;<span id="jfCap" contenteditable="true" spellcheck="false"></span></figcaption>'+
-   '</figure></div>'+
-   '<div class="jf-actions">'+
-    '<button class="jf-btn primary" id="jfCopy" type="button">Copy figure</button>'+
-    '<button class="jf-btn" id="jfCopyCap" type="button">Copy caption</button>'+
-    '<button class="jf-btn" id="jfPng" type="button">Download PNG \u00B7 600 dpi</button>'+
-    '<button class="jf-btn" id="jfSvg" type="button">Download SVG</button>'+
-    '<span class="jf-status" id="jfStatus" role="status"></span>'+
-   '</div>'+
-   '<div class="jf-meta"><div id="jfSpec"></div><div class="jf-checks" id="jfChecks"></div></div>'+
-   '<div class="jf-note">Preview is enlarged. Figures are drawn with a white background and no caption inside the image; paste the caption into your manuscript beneath the figure. The caption text is editable.</div>'+
+   '<div class="jf-list" id="jfList"></div>'+
   '</div>'+
  '</details>'+
 '</div>';
 while(wrap.firstChild)host.appendChild(wrap.firstChild);
 
 const $=id=>document.getElementById(id);
-const sel=$('jfSel'),widthSel=$('jfWidth'),colorSel=$('jfColor'),gridChk=$('jfGrid');
-const t0In=$('jfT0'),t1In=$('jfT1'),numIn=$('jfNum');
-const img=$('jfImg'),noEl=$('jfNo'),capEl=$('jfCap'),statusEl=$('jfStatus');
-FIGS.forEach((f,i)=>{const o=document.createElement('option');o.value=i;o.textContent=f.name;sel.appendChild(o);});
-
+const widthSel=$('jfWidth'),colorSel=$('jfColor'),gridChk=$('jfGridChk'),list=$('jfList');
 const tFirst=C.time[0],tLast=C.time[N-1];
-t0In.value=tFirst;t1In.value=tLast;t0In.min=t1In.min=tFirst;t0In.max=t1In.max=tLast;
 
-let cur=null,statusTimer=null;
-function say(msg,warn){
-  statusEl.textContent=msg;statusEl.className='jf-status'+(warn?' warn':'');
-  clearTimeout(statusTimer);statusTimer=setTimeout(()=>{statusEl.textContent='';},5000);
-}
-const words=s=>(s.trim().match(/\S+/g)||[]).length;
-
-function refreshMeta(){
-  if(!cur)return;
-  const wc=words(capEl.textContent);
-  const fits=cur.wIn<=COL_W?(cur.hIn<=MAX_COL_H):true;
-  $('jfSpec').textContent=cur.wIn.toFixed(2)+' \u00D7 '+cur.hIn.toFixed(2)+' in  \u00B7  '+Math.round(cur.wIn*DPI)+' \u00D7 '+Math.round(cur.hIn*DPI)+' px at '+DPI+' dpi';
-  const items=[
-    ['Lettering 8\u20139 pt at final size',false],
-    ['Lines \u2265 0.35 pt',false],
-    ['SI units',false],
-    ['No caption inside figure',false],
-    [cur.wIn<=COL_W?(fits?'Fits one column (\u2264 3\u00BC \u00D7 3\u00BD in)':'Taller than 3\u00BD in: adds to page count'):'Page-width figure: adds to page count',cur.wIn>COL_W||!fits],
-    ['Caption '+wc+' / '+MAX_CAPTION_WORDS+' words',wc>MAX_CAPTION_WORDS]
-  ];
-  $('jfChecks').innerHTML=items.map(i=>'<span'+(i[1]?' class="warn"':'')+'>'+esc(i[0])+'</span>').join('');
-  noEl.textContent='Fig. '+(numIn.value||1);
-}
-
-function update(resetCaption){
-  const fig=FIGS[+sel.value];
-  let wIn=widthSel.value==='page'?PAGE_W:COL_W;
-  if(fig.single&&wIn>COL_W){wIn=COL_W;say('Equal-axis plot is limited to one column.',true);}
-  const hIn=wIn>COL_W?fig.h[1]:fig.h[0];
-  let a=parseFloat(t0In.value),b=parseFloat(t1In.value);
-  if(!isFinite(a))a=tFirst;if(!isFinite(b))b=tLast;
-  const D=prep(a,b);
-  if(D.t.length<3){say('Time window is too short.',true);return;}
-  const S=styles(colorSel.value==='color');
-  const spec=fig.build(D,S);
-  if(!spec.equal)spec.xlim=[a,b];
-  const svg=renderSVG(spec,wIn,hIn,{grid:gridChk.checked});
-  cur={fig,svg,wIn,hIn,caption:spec.caption};
-  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
-  img.style.width=Math.round(wIn*96*1.55)+'px';
-  if(resetCaption)capEl.textContent=spec.caption;
-  refreshMeta();
-}
-
-function fname(ext){return 'flight'+Math.round(C.flight[0])+'_fig'+(numIn.value||1)+'_'+cur.fig.id+'.'+ext;}
 function download(blob,name){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
 
-sel.addEventListener('change',()=>{numIn.value=+sel.value+1;update(true);});
-[widthSel,colorSel,gridChk].forEach(el=>el.addEventListener('change',()=>update(true)));
-let tmr=null;
-[t0In,t1In].forEach(el=>el.addEventListener('input',()=>{clearTimeout(tmr);tmr=setTimeout(()=>update(true),250);}));
-numIn.addEventListener('input',refreshMeta);
-capEl.addEventListener('input',refreshMeta);
-capEl.addEventListener('keydown',e=>{if(e.key==='Enter')e.preventDefault();});
+const cards=FIGS.map((fig,i)=>{
+  const el=document.createElement('div');
+  el.className='jf-card';
+  el.innerHTML=
+    '<div class="jf-stage"><figure class="jf-paper"><img alt="'+esc(fig.name)+'">'+
+    '<figcaption class="jf-cap"><b>Fig. '+(i+1)+'</b>&nbsp;&nbsp;<span contenteditable="true" spellcheck="false"></span></figcaption></figure></div>'+
+    '<div class="jf-actions">'+
+     '<button class="jf-btn primary" data-a="copy" type="button">Copy figure</button>'+
+     '<button class="jf-btn" data-a="cap" type="button">Copy caption</button>'+
+     '<button class="jf-btn" data-a="png" type="button">PNG \u00B7 600 dpi</button>'+
+     '<button class="jf-btn" data-a="svg" type="button">SVG</button>'+
+     '<span class="jf-status" role="status"></span>'+
+    '</div>';
+  list.appendChild(el);
+  const st={fig,i,el,img:el.querySelector('img'),cap:el.querySelector('[contenteditable]'),status:el.querySelector('.jf-status'),svg:null,wIn:0,hIn:0,timer:null,capSet:false};
+  const say=(m,warn)=>{st.status.textContent=m;st.status.className='jf-status'+(warn?' warn':'');clearTimeout(st.timer);st.timer=setTimeout(()=>{st.status.textContent='';},5000);};
+  const fname=ext=>'flight'+Math.round(C.flight[0])+'_fig'+(i+1)+'_'+fig.id+'.'+ext;
+  st.cap.addEventListener('keydown',e=>{if(e.key==='Enter')e.preventDefault();});
+  el.addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b||!st.svg)return;
+    const act=b.dataset.a;
+    if(act==='svg')download(new Blob([st.svg],{type:'image/svg+xml'}),fname('svg'));
+    else if(act==='png')svgToPng(st.svg,st.wIn,st.hIn).then(x=>{download(x,fname('png'));say('PNG saved');}).catch(err=>say(err.message,true));
+    else if(act==='copy'){
+      if(!(navigator.clipboard&&window.ClipboardItem)){say('Clipboard blocked: use PNG, or right-click > Copy image',true);return;}
+      navigator.clipboard.write([new ClipboardItem({'image/png':svgToPng(st.svg,st.wIn,st.hIn)})])
+        .then(()=>say('Figure copied')).catch(()=>say('Clipboard blocked: use PNG, or right-click > Copy image',true));
+    }else if(act==='cap'){
+      const txt='Fig. '+(i+1)+'  '+st.cap.textContent.trim();
+      if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(()=>say('Caption copied')).catch(()=>say('Clipboard blocked: select and copy the caption',true));
+      else say('Clipboard blocked: select and copy the caption',true);
+    }
+  });
+  return st;
+});
 
-$('jfSvg').addEventListener('click',()=>{if(cur)download(new Blob([cur.svg],{type:'image/svg+xml'}),fname('svg'));});
-$('jfPng').addEventListener('click',()=>{
-  if(!cur)return;
-  svgToPng(cur.svg,cur.wIn,cur.hIn).then(b=>{download(b,fname('png'));say('PNG saved (600 dpi)');}).catch(e=>say(e.message,true));
-});
-$('jfCopy').addEventListener('click',()=>{
-  if(!cur)return;
-  if(!(navigator.clipboard&&window.ClipboardItem)){say('Clipboard blocked here. Use Download PNG, or right-click the preview and choose Copy image.',true);return;}
-  const p=svgToPng(cur.svg,cur.wIn,cur.hIn);
-  navigator.clipboard.write([new ClipboardItem({'image/png':p})])
-    .then(()=>say('Figure copied (PNG, 600 dpi)'))
-    .catch(()=>say('Clipboard blocked here. Use Download PNG, or right-click the preview and choose Copy image.',true));
-});
-$('jfCopyCap').addEventListener('click',()=>{
-  const txt=noEl.textContent+'  '+capEl.textContent.trim();
-  const ok=()=>say('Caption copied');
-  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(ok).catch(()=>say('Clipboard blocked here. Select the caption and copy it.',true));
-  else say('Clipboard blocked here. Select the caption and copy it.',true);
-});
+function renderAll(){
+  const S=styles(colorSel.value==='color');
+  const D=prep(tFirst,tLast);
+  cards.forEach(st=>{
+    const fig=st.fig;
+    const wIn=(widthSel.value==='page'&&!fig.single)?PAGE_W:COL_W;
+    const hIn=wIn>COL_W?fig.h[1]:fig.h[0];
+    const spec=fig.build(D,S);
+    if(!spec.equal)spec.xlim=[tFirst,tLast];
+    st.svg=renderSVG(spec,wIn,hIn,{grid:gridChk.checked});
+    st.wIn=wIn;st.hIn=hIn;
+    st.img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(st.svg);
+    st.img.style.width=Math.round(wIn*96*1.4)+'px';
+    st.el.classList.toggle('wide',wIn>COL_W);
+    if(!st.capSet){st.cap.textContent=spec.caption;st.capSet=true;}
+  });
+}
+[widthSel,colorSel,gridChk].forEach(el=>el.addEventListener('change',renderAll));
 
-/* render lazily the first time the dropdown is opened */
+/* render the first time the dropdown is opened */
 const det=$('jf');
 let first=true;
-det.addEventListener('toggle',()=>{if(det.open&&first){first=false;update(true);}});
+det.addEventListener('toggle',()=>{if(det.open&&first){first=false;renderAll();}});
 })();
 </script>
 </body>
